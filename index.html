@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Motormania 2.5D — a remake of the C64 classic</title>
+<meta name="description" content="A 2.5D browser remake of Motor Mania, the 1982 Commodore 64 driving game. Dodge traffic, glass, oil and avalanches — and don't run out of gas.">
+<meta name="theme-color" content="#0e1621">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%230e1621'/%3E%3Ccircle cx='32' cy='32' r='20' fill='none' stroke='%23f5a623' stroke-width='5'/%3E%3Cpath d='M32 32 L44 20' stroke='%23e5484d' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
+</script>
+</head>
+<body>
+<div id="app">
+  <main id="stage">
+    <canvas id="game"></canvas>
+    <div id="roadTag"></div>
+    <div id="notice"></div>
+    <div id="toast"></div>
+
+    <div id="touch">
+      <div class="pad">
+        <button data-key="left" aria-label="Steer left">&#9664;</button>
+        <button data-key="right" aria-label="Steer right">&#9654;</button>
+      </div>
+      <div class="pad">
+        <button data-key="brake" class="brake" aria-label="Brake">BRAKE</button>
+        <button data-key="gas" class="gas" aria-label="Accelerate">GAS</button>
+      </div>
+    </div>
+  </main>
+
+  <aside id="dash">
+    <header>
+      <h1>MOTOR<span>MANIA</span></h1>
+      <p>2.5D remake</p>
+    </header>
+
+    <div class="dials">
+      <div class="dial" id="dial-speed"></div>
+      <div class="dial" id="dial-fuel"></div>
+      <div class="dial" id="dial-gen"></div>
+      <div class="dial" id="dial-temp"></div>
+    </div>
+
+    <div class="readouts">
+      <div class="readout">
+        <label>Miles</label>
+        <div class="odo" id="odo">000.0</div>
+      </div>
+      <div class="readout">
+        <label>Best</label>
+        <div class="odo dim" id="best">000.0</div>
+      </div>
+    </div>
+
+    <div class="status">
+      <div class="row">
+        <label>Lives</label>
+        <div id="lives"></div>
+      </div>
+      <div class="row">
+        <label>Spare tyre</label>
+        <div id="spare" class="lamp on">READY</div>
+      </div>
+      <div class="row">
+        <label>Radiator</label>
+        <div id="rad" class="lamp on">OK</div>
+      </div>
+    </div>
+
+    <div class="buttons">
+      <button id="btnPause" type="button">Pause</button>
+      <button id="btnSound" type="button">Sound: On</button>
+      <button id="btnAbout" type="button">About</button>
+    </div>
+  </aside>
+</div>
+
+<!-- Modals -->
+<div class="modal open" id="modal-start" role="dialog" aria-modal="true" aria-labelledby="startTitle">
+  <div class="card">
+    <div class="eyebrow">A tribute to the 1982 Commodore 64 classic</div>
+    <h2 id="startTitle">MOTOR<span>MANIA</span></h2>
+    <p class="lead">Drive as many miles as you can. Stay on the road, dodge the traffic, and keep an eye on your gauges.</p>
+    <div class="grid2">
+      <div>
+        <h3>Controls</h3>
+        <ul class="keys">
+          <li><kbd>&uarr;</kbd> / <kbd>W</kbd> Accelerate</li>
+          <li><kbd>&darr;</kbd> / <kbd>S</kbd> Brake</li>
+          <li><kbd>&larr;</kbd> <kbd>&rarr;</kbd> / <kbd>A</kbd> <kbd>D</kbd> Steer</li>
+          <li><kbd>P</kbd> Pause &nbsp; <kbd>M</kbd> Mute</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Hazards</h3>
+        <ul class="haz">
+          <li><b>Glass &amp; nails</b> flat tyre — one spare</li>
+          <li><b>Logs</b> crack the radiator</li>
+          <li><b>Oil</b> you skid &nbsp; <b>Potholes</b> wobbly steering</li>
+          <li><b>Tar patches</b> slow you down</li>
+          <li><b>Boulders, cars, kerbs</b> cost a life</li>
+        </ul>
+      </div>
+    </div>
+    <p class="tip">Stop on a <b>gas station</b> forecourt to refuel, recharge and repair. Keep your speed up or the generator drains the battery.</p>
+    <div class="actions">
+      <button class="primary" id="btnStart" type="button">Start engine</button>
+      <button class="ghost" data-open="modal-about" type="button">About the original</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-pause" role="dialog" aria-modal="true" aria-labelledby="pauseTitle">
+  <div class="card small">
+    <h2 id="pauseTitle">Paused</h2>
+    <p class="lead">Engine idling. Take your time.</p>
+    <div class="actions">
+      <button class="primary" id="btnResume" type="button">Resume</button>
+      <button class="ghost" id="btnRestart" type="button">Restart</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-over" role="dialog" aria-modal="true" aria-labelledby="overTitle">
+  <div class="card small">
+    <div class="eyebrow" id="overCause">Out of lives</div>
+    <h2 id="overTitle">Game over</h2>
+    <div class="result">
+      <div><label>Miles driven</label><strong id="overMiles">0.0</strong></div>
+      <div><label>Best</label><strong id="overBest">0.0</strong></div>
+    </div>
+    <p class="lead" id="overNote"></p>
+    <div class="actions">
+      <button class="primary" id="btnAgain" type="button">Drive again</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-about" role="dialog" aria-modal="true" aria-labelledby="aboutTitle">
+  <div class="card">
+    <div class="eyebrow">About &amp; credits</div>
+    <h2 id="aboutTitle">The original Motor Mania</h2>
+    <p><b>Motor Mania</b> was written by <b>John A. Fitzpatrick</b> and published by <b>UMI (United Microware Industries)</b> in <b>1982</b> — the same year the Commodore 64 itself went on sale, making it one of the very first driving games for the machine.</p>
+    <p>It is a top-down, vertically scrolling endurance drive. You set off from a gas station in an old-style racing car, push up to 80&nbsp;mph across motorways, B-roads and dirt tracks, and try to cover as many miles as possible on five lives. A side panel shows a speedometer, fuel gauge and generator dial, your mileage, lives and spare tyre. Nails and broken glass puncture tyres, logs damage the radiator, potholes upset the steering, road patches slow you down, avalanches send boulders across the road, and crossroads bring cross traffic — including a fire engine.</p>
+    <h3>This remake</h3>
+    <p>Motormania 2.5D keeps those rules and that feel, but renders the road in a tilted 3D view with real-time lighting, shadows and a day/night cycle. It is an unofficial, non-commercial fan tribute written from scratch — it contains no code, graphics or sound from the original game.</p>
+    <h3>Credits</h3>
+    <ul class="credits">
+      <li><span>Original game (1982)</span> John A. Fitzpatrick · UMI</li>
+      <li><span>Remake</span> Roberto Renz</li>
+      <li><span>Rendering</span> three.js (MIT)</li>
+      <li><span>Typeface</span> Chakra Petch (OFL)</li>
+      <li><span>Licence</span> MIT — <a href="https://github.com/robertorenz/Motormania" target="_blank" rel="noopener">source on GitHub</a></li>
+    </ul>
+    <p class="fine">Motor Mania and Commodore 64 are the property of their respective owners. More on the original: <a href="https://en.wikipedia.org/wiki/Motor_Mania_(video_game)" target="_blank" rel="noopener">Wikipedia</a>.</p>
+    <div class="actions">
+      <button class="primary" data-close type="button">Close</button>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
