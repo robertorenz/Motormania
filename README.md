@@ -6,7 +6,7 @@ A browser remake of **Motor Mania**, the 1982 Commodore 64 driving game — same
 
 ![Daytime driving on a B-road](docs/day.jpg)
 
-| Night driving on the dirt track | Title screen at the gas station |
+| Night on the motorway, crossroads ahead | Title screen at the gas station |
 | --- | --- |
 | ![Night driving with headlights](docs/night.jpg) | ![Title screen](docs/title.jpg) |
 
