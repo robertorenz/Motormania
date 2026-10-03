@@ -10,6 +10,15 @@ A browser remake of **Motor Mania**, the 1982 Commodore 64 driving game — same
 | --- | --- |
 | ![Night driving with headlights](docs/night.jpg) | ![Title screen](docs/title.jpg) |
 
+![Classic mode: the original's flat top-down view](docs/classic.jpg)
+
+## Two ways to play
+
+- **2.5D remake** — the tilted 3D view shown above, with the camera following the road.
+- **1982 classic** — the original's flat top-down screen: play area on the left, black instrument panel on the right with the MPH, FUEL and GEN dials, the odometer, spare tyre and cars in reserve. The road slides under a car that goes exactly where you point it, just as it did on the C64. It is drawn at full resolution with crisp shapes, not emulated pixels.
+
+Both modes share the same rules, hazards and road generator. Pick a **difficulty level** (1–9, as in the original) on the title screen; higher levels mean more hazards and denser traffic.
+
 ## How to play
 
 Drive as many miles as you can on five lives. You start parked on a gas station forecourt.
@@ -64,7 +73,7 @@ Read more: [Motor Mania on Wikipedia](https://en.wikipedia.org/wiki/Motor_Mania_
 
 ### What the remake changes
 
-- The flat top-down view becomes a tilted 3D camera with low-poly models, shadows and fog — the long look-ahead of the original is kept.
+- The flat top-down view becomes a tilted 3D camera with low-poly models, shadows and fog — the long look-ahead of the original is kept. (Classic mode keeps the flat view.)
 - A day/night cycle, with headlights powered by the battery.
 - A temperature gauge on the dashboard, so radiator damage is visible.
 - Gas stations also restock the spare tyre.
@@ -94,12 +103,13 @@ python -m http.server 8000
 index.html      page, dashboard and modals
 css/style.css   layout and theme
 js/main.js      game loop, rules, HUD, input
+js/classic.js   flat top-down renderer for classic mode
 js/road.js      procedural road, stations, crossroads, chunk geometry
 js/models.js    low-poly cars, hazards and scenery
 js/audio.js     Web Audio sound effects
 ```
 
-Add `?demo=1` to the URL for an invulnerable autopilot run (used for the screenshots above); `&tod=day|dusk|night` fixes the time of day.
+Add `?demo=1` to the URL for an invulnerable autopilot run (used for the screenshots above); `&tod=day|dusk|night` fixes the time of day and `&classic=1` selects classic mode.
 
 ## Licence
 

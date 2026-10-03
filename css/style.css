@@ -34,7 +34,41 @@ html, body {
 
 /* ---------- stage ---------- */
 #stage { position: relative; min-width: 0; min-height: 0; overflow: hidden; background: #0a1119; }
-#game { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+#game, #classic { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+#classic { display: none; background: #1b1612; }
+
+/* ---------- classic (1982) presentation ---------- */
+body.classic #classic { display: block; }
+body.classic #app { grid-template-columns: 1fr; }
+body.classic #dash, body.classic #roadTag, body.classic #notice { display: none; }
+body.classic #toast {
+  top: 58%;
+  padding: 10px 18px;
+  background: #fff;
+  color: #000;
+  border: 3px solid #000;
+  border-radius: 0;
+  box-shadow: 0 0 0 3px #fff;
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(11px, 1.5vw, 18px);
+  letter-spacing: 0;
+  line-height: 1.6;
+  text-transform: uppercase;
+}
+body.classic #toast.bad, body.classic #toast.warn, body.classic #toast.good { color: #000; border-color: #000; }
+body.classic .card { border-top-color: var(--green); }
+
+.levels-row { display: flex; align-items: center; gap: 12px; margin-top: 14px; flex-wrap: wrap; }
+.levels-row label { margin: 0; }
+.levels { display: flex; gap: 4px; }
+.levels button {
+  width: 30px; height: 30px; border-radius: 6px;
+  border: 1px solid var(--line); background: #0d1622; color: var(--muted);
+  font: 700 13px 'Chakra Petch', sans-serif;
+}
+.levels button.on { background: var(--teal); border-color: var(--teal); color: #06201c; }
+.classic-btn { background: var(--green); color: #06201c; border: 1px solid var(--green); }
+.classic-btn:hover { background: #63d99c; }
 
 #roadTag {
   position: absolute; top: 14px; left: 14px;

@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { Track, TYPES, LANES, CH } from './road.js';
 import * as M from './models.js';
 import { Sound } from './audio.js';
+import { renderClassic } from './classic.js';
 
 const VMAX = 36; // world units / second == 80 mph
 const MILE = 500; // world units per mile
@@ -20,6 +21,13 @@ const pick = (arr) => arr[(Math.random() * arr.length) | 0];
 const params = new URLSearchParams(location.search);
 const DEMO = params.has('demo'); // autopilot, used for screenshots
 const FORCE_TOD = params.get('tod');
+
+// Presentation: the 2.5D remake, or the flat "classic" view of the 1982 original.
+let classic = params.has('classic');
+let level = 1; // 1..9, as the original's difficulty levels
+try { level = clamp(parseInt(localStorage.getItem('motormania.level')) || 1, 1, 9); } catch { /* storage unavailable */ }
+const classicCanvas = $('classic');
+const TRAFFIC_COLORS = ['#2f6fb5', '#e9c46a', '#2a9d8f', '#f2f2f2', '#3a3f47', '#e76f51', '#4f9d4a', '#1d3557'];
 
 // ---------------------------------------------------------------- renderer
 const stage = $('stage');
@@ -95,12 +103,12 @@ function resetState() {
     fuel: 100, batt: 100, temp: 45, radiator: true, spare: true, lives: 5,
     erratic: 0, oil: 0, slow: 0, invuln: 0,
     sub: null, subT: 0, cause: '', servicing: false, serviceDone: false,
-    nextTraffic: 260, lowFuelBeep: 0, stationHint: null, lastType: '',
+    nextTraffic: 260, lowFuelBeep: 0, stationHint: null, lastType: '', nextBonus: 5,
   });
 }
 
 function clearWorld() {
-  for (const c of chunks.values()) { scene.remove(c.group); c.dispose(); }
+  for (const c of chunks.values()) { if (c.group) scene.remove(c.group); c.dispose(); }
   chunks.clear();
   for (const list of [obstacles, traffic, crossers]) for (const o of list) scene.remove(o.mesh);
   obstacles = [];
@@ -129,14 +137,15 @@ function updateChunks(all) {
   const k1 = Math.floor((S.d + 240) / CH);
   for (let k = k0; k <= k1; k++) {
     if (chunks.has(k)) continue;
-    const c = track.buildChunk(k);
-    scene.add(c.group);
+    // classic mode draws the road itself, so skip the 3D geometry
+    const c = classic ? { k, group: null, dispose() {} } : track.buildChunk(k);
+    if (c.group) scene.add(c.group);
     chunks.set(k, c);
     populate(k);
     if (!all) break; // at most one new chunk per frame
   }
   for (const [k, c] of chunks) {
-    if (k < k0) { scene.remove(c.group); c.dispose(); chunks.delete(k); }
+    if (k < k0) { if (c.group) scene.remove(c.group); c.dispose(); chunks.delete(k); }
   }
   track.prune(S.d);
 }
@@ -170,7 +179,7 @@ function populate(k) {
   const d0 = k * CH;
   if (d0 + CH < 200) return;
   const miles = (S.d - START_D) / MILE;
-  const n = Math.floor(1.3 + Math.min(3, miles * 0.22) + Math.random() * 1.3);
+  const n = Math.floor((1.3 + Math.min(3, miles * 0.22) + Math.random() * 1.3) * (1 + (level - 1) * 0.22));
   for (let i = 0; i < n; i++) {
     const d = d0 + rand(0, CH);
     if (d < 230 || track.nearStation(d, 25) || track.nearCrossing(d, 24)) continue;
@@ -200,11 +209,12 @@ function makeCrossers(c) {
     const speed = fire ? 21 : rand(10, 15);
     const phase0 = rand(0, CROSS_SPAN);
     for (let i = 0; i < count; i++) {
-      const mesh = fire ? M.fireEngine() : Math.random() < 0.25 ? M.truck() : M.sedan();
+      const kind = fire ? 'fire' : Math.random() < 0.25 ? 'truck' : 'sedan';
+      const mesh = fire ? M.fireEngine() : kind === 'truck' ? M.truck() : M.sedan();
       mesh.rotation.y = (-lane.dir * Math.PI) / 2;
       scene.add(mesh);
       crossers.push({
-        mesh, cx, d: c.d + lane.dd, dir: lane.dir, speed, fire,
+        mesh, cx, d: c.d + lane.dd, dir: lane.dir, speed, fire, kind, color: pick(TRAFFIC_COLORS),
         phase: phase0 + (i * CROSS_SPAN) / count + rand(-8, 8), hl: mesh.userData.hl, x: 0,
       });
     }
@@ -217,9 +227,10 @@ function spawnTraffic() {
   const off = pick(LANES[inf.type]);
   const speed = inf.type === 'dirt' ? rand(9, 15) : rand(12, 23);
   if (traffic.some((c) => Math.abs(c.d - d) < 10 && c.off === off)) return;
-  const mesh = inf.type !== 'dirt' && Math.random() < 0.22 ? M.truck() : M.sedan();
+  const kind = inf.type !== 'dirt' && Math.random() < 0.22 ? 'truck' : 'sedan';
+  const mesh = kind === 'truck' ? M.truck() : M.sedan();
   scene.add(mesh);
-  traffic.push({ mesh, d, off, v: speed, x: 0, hl: mesh.userData.hl, hw: mesh.userData.hw });
+  traffic.push({ mesh, d, off, v: speed, x: 0, hl: mesh.userData.hl, hw: mesh.userData.hw, kind, color: pick(TRAFFIC_COLORS) });
 }
 
 // ---------------------------------------------------------------- HUD
@@ -301,7 +312,9 @@ function openModal(id) {
 function closeModals() { document.querySelectorAll('.modal').forEach((m) => m.classList.remove('open')); }
 const modalOpen = (id) => $(id).classList.contains('open');
 
-function start() {
+function start(useClassic = classic) {
+  classic = useClassic;
+  document.body.classList.toggle('classic', classic);
   sound.init();
   newGame();
   closeModals();
@@ -350,9 +363,24 @@ function gameOver() {
   openModal('modal-over');
 }
 
-$('btnStart').onclick = start;
-$('btnAgain').onclick = start;
-$('btnRestart').onclick = start;
+$('btnStart').onclick = () => start(false);
+$('btnClassic').onclick = () => start(true);
+$('btnAgain').onclick = () => start();
+$('btnRestart').onclick = () => start();
+$('btnMenu').onclick = () => { mode = 'menu'; document.body.classList.remove('classic'); classic = false; newGame(); openModal('modal-start'); };
+
+const levelBox = $('levels');
+function renderLevels() {
+  levelBox.innerHTML = Array.from({ length: 9 }, (_, i) => `<button type="button" class="${i + 1 === level ? 'on' : ''}" data-level="${i + 1}">${i + 1}</button>`).join('');
+}
+levelBox.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-level]');
+  if (!b) return;
+  level = parseInt(b.dataset.level);
+  try { localStorage.setItem('motormania.level', String(level)); } catch { /* storage unavailable */ }
+  renderLevels();
+});
+renderLevels();
 $('btnResume').onclick = resume;
 $('btnPause').onclick = () => (mode === 'paused' ? resume() : pause());
 $('btnSound').onclick = toggleSound;
@@ -387,7 +415,8 @@ window.addEventListener('keydown', (e) => {
   } else if (e.code === 'KeyM') toggleSound();
   else if (e.code === 'Enter' || e.code === 'Space') {
     if (e.target instanceof HTMLButtonElement) return; // let the focused button handle it
-    if (modalOpen('modal-start') || modalOpen('modal-over')) start();
+    if (modalOpen('modal-start')) start(false);
+    else if (modalOpen('modal-over')) start();
     else if (modalOpen('modal-pause')) resume();
     e.preventDefault();
   }
@@ -441,6 +470,7 @@ function respawn() {
   S.invuln = 3;
   S.radiator = true;
   S.temp = 45;
+  S.spare = true; // a fresh car comes with its spare
   if (S.cause === 'fuel') S.fuel = 50;
   S.batt = Math.max(S.batt, S.cause === 'battery' ? 60 : 35);
   car.rotation.set(0, 0, 0);
@@ -553,8 +583,9 @@ function drive(dt) {
   }
   // The car tracks the road's curve; curves still push it outward, so
   // you have to steer into them — just not fight every bend.
+  // Classic mode keeps the original's behaviour: the road moves, the car doesn't follow it.
   const slope = track.slope(S.d);
-  S.off += (vx - slope * S.v * CURVE_PUSH) * dt;
+  S.off += (vx - slope * S.v * (classic ? 1 : CURVE_PUSH)) * dt;
   S.d += S.v * dt;
   S.x = track.cx(S.d) + S.off;
   if (S.slow > 0) S.slow -= dt;
@@ -648,7 +679,13 @@ function updateWorld(dt) {
     const type = track.info(S.d + 165).type;
     const gap = type === 'motorway' ? rand(45, 105) : type === 'broad' ? rand(85, 165) : rand(140, 240);
     const miles = (S.d - START_D) / MILE;
-    S.nextTraffic = S.d + gap * Math.max(0.55, 1 - miles * 0.04);
+    S.nextTraffic = S.d + gap * Math.max(0.45, 1 - miles * 0.04 - (level - 1) * 0.06);
+  }
+
+  // an extra car every 5 miles, as in the original
+  if ((S.d - START_D) / MILE >= S.nextBonus) {
+    S.nextBonus += 5;
+    if (S.lives < 5) { S.lives++; sound.ding(); toast(`${S.nextBonus - 5} miles — extra car!`, 'good'); }
   }
   for (const c of traffic) {
     let v = c.v;
@@ -735,6 +772,11 @@ function nightness() {
 const sky = new THREE.Color();
 const camTarget = () => track.cx(S.d + 14) + S.off * 0.3;
 function present(dt) {
+  if (classic) {
+    updateHud(false);
+    renderClassic(classicCanvas, { S, track, obstacles, traffic, crossers, best, VMAX, MILE, START_D });
+    return;
+  }
   const z = -S.d;
 
   // player car
@@ -802,6 +844,7 @@ resize();
 newGame();
 if (DEMO) {
   closeModals();
+  document.body.classList.toggle('classic', classic);
   mode = 'play';
   // fast-forward so a screenshot lands somewhere interesting
   const skip = parseFloat(params.get('skip')) || 0;

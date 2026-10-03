@@ -9,7 +9,7 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%230e1621'/%3E%3Ccircle cx='32' cy='32' r='20' fill='none' stroke='%23f5a623' stroke-width='5'/%3E%3Cpath d='M32 32 L44 20' stroke='%23e5484d' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&family=Press+Start+2P&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
@@ -19,6 +19,7 @@
 <div id="app">
   <main id="stage">
     <canvas id="game"></canvas>
+    <canvas id="classic"></canvas>
     <div id="roadTag"></div>
     <div id="notice"></div>
     <div id="toast"></div>
@@ -110,10 +111,16 @@
       </div>
     </div>
     <p class="tip">Stop on a <b>gas station</b> forecourt to refuel, recharge and repair. Keep your speed up or the generator drains the battery.</p>
+    <div class="levels-row">
+      <label>Difficulty level</label>
+      <div id="levels" class="levels"></div>
+    </div>
     <div class="actions">
-      <button class="primary" id="btnStart" type="button">Start engine</button>
+      <button class="primary" id="btnStart" type="button">Drive the 2.5D remake</button>
+      <button class="classic-btn" id="btnClassic" type="button">Play the 1982 classic</button>
       <button class="ghost" data-open="modal-about" type="button">About the original</button>
     </div>
+    <p class="fine">Classic: the original's flat top-down view and instrument panel, the road moving under a car that doesn't steer itself — drawn at full resolution.</p>
   </div>
 </div>
 
@@ -139,6 +146,7 @@
     <p class="lead" id="overNote"></p>
     <div class="actions">
       <button class="primary" id="btnAgain" type="button">Drive again</button>
+      <button class="ghost" id="btnMenu" type="button">Main menu</button>
     </div>
   </div>
 </div>
@@ -150,7 +158,7 @@
     <p><b>Motor Mania</b> was written by <b>John A. Fitzpatrick</b> and published by <b>UMI (United Microware Industries)</b> in <b>1982</b> — the same year the Commodore 64 itself went on sale, making it one of the very first driving games for the machine.</p>
     <p>It is a top-down, vertically scrolling endurance drive. You set off from a gas station in an old-style racing car, push up to 80&nbsp;mph across motorways, B-roads and dirt tracks, and try to cover as many miles as possible on five lives. A side panel shows a speedometer, fuel gauge and generator dial, your mileage, lives and spare tyre. Nails and broken glass puncture tyres, logs damage the radiator, potholes upset the steering, road patches slow you down, avalanches send boulders across the road, and crossroads bring cross traffic — including a fire engine.</p>
     <h3>This remake</h3>
-    <p>Motormania 2.5D keeps those rules and that feel, but renders the road in a tilted 3D view with real-time lighting, shadows and a day/night cycle. It is an unofficial, non-commercial fan tribute written from scratch — it contains no code, graphics or sound from the original game.</p>
+    <p>Motormania 2.5D keeps those rules and that feel, but renders the road in a tilted 3D view with real-time lighting, shadows and a day/night cycle. <b>Classic mode</b> recreates the original's flat top-down screen — play area on the left, instrument panel on the right, the road sliding under a car that goes where you point it — redrawn at full resolution. It is an unofficial, non-commercial fan tribute written from scratch — it contains no code, graphics or sound from the original game.</p>
     <h3>Credits</h3>
     <ul class="credits">
       <li><span>Original game (1982)</span> John A. Fitzpatrick · UMI</li>
