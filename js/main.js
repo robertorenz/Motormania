@@ -9,6 +9,7 @@ const MILE = 500; // world units per mile
 const START_D = 48;
 const DAY_LEN = 6000;
 const CROSS_SPAN = 220;
+const CURVE_PUSH = 0.45; // how strongly bends push the car outward (1 = car ignores the road)
 
 const $ = (id) => document.getElementById(id);
 const rand = (a, b) => a + Math.random() * (b - a);
@@ -90,7 +91,7 @@ const keys = { gas: false, brake: false, left: false, right: false };
 
 function resetState() {
   Object.assign(S, {
-    d: START_D, x: 0, v: 0, vx: 0, steer: 0, camX: 0, time: 0, shake: 0,
+    d: START_D, x: 0, off: 0, v: 0, vx: 0, steer: 0, camX: 0, time: 0, shake: 0,
     fuel: 100, batt: 100, temp: 45, radiator: true, spare: true, lives: 5,
     erratic: 0, oil: 0, slow: 0, invuln: 0,
     sub: null, subT: 0, cause: '', servicing: false, serviceDone: false,
@@ -112,8 +113,9 @@ function newGame() {
   clearWorld();
   track = new Track();
   resetState();
-  S.x = track.info(S.d).half + 5; // parked on the forecourt
-  S.camX = S.x;
+  S.off = track.info(S.d).half + 5; // parked on the forecourt
+  S.x = track.cx(S.d) + S.off;
+  S.camX = camTarget();
   car.rotation.set(0, 0, 0);
   car.visible = true;
   updateChunks(true);
@@ -428,6 +430,7 @@ function loseLife(cause) {
 function respawn() {
   if (S.lives <= 0) { gameOver(); return; }
   S.sub = null;
+  S.off = 0;
   S.x = track.cx(S.d);
   S.v = 0;
   S.vx = 0;
@@ -548,8 +551,12 @@ function drive(dt) {
     S.erratic -= dt;
     vx += (Math.sin(S.time * 19) + Math.sin(S.time * 31.7)) * 4.2 * Math.min(1, S.v / 10);
   }
-  S.x += vx * dt;
+  // The car tracks the road's curve; curves still push it outward, so
+  // you have to steer into them — just not fight every bend.
+  const slope = track.slope(S.d);
+  S.off += (vx - slope * S.v * CURVE_PUSH) * dt;
   S.d += S.v * dt;
+  S.x = track.cx(S.d) + S.off;
   if (S.slow > 0) S.slow -= dt;
   if (S.invuln > 0) S.invuln -= dt;
 
@@ -697,6 +704,7 @@ function update(dt) {
     S.subT -= dt;
     S.v = Math.max(0, S.v - (S.sub === 'crash' ? 40 : 12) * dt);
     S.d += S.v * dt;
+    S.x = track.cx(S.d) + S.off;
     if (S.sub === 'crash') car.rotation.y += 11 * dt * clamp(S.subT / 2.3, 0, 1);
     if (S.subT <= 0) respawn();
   } else if (S.sub === 'tyre') {
@@ -725,13 +733,15 @@ function nightness() {
 }
 
 const sky = new THREE.Color();
+const camTarget = () => track.cx(S.d + 14) + S.off * 0.3;
 function present(dt) {
   const z = -S.d;
 
   // player car
   car.position.set(S.x, S.sub === 'crash' ? Math.abs(Math.sin(S.subT * 6)) * 0.6 : 0, z);
   if (S.sub !== 'crash') {
-    const yaw = -Math.atan2(S.vx + (S.erratic > 0 ? Math.sin(S.time * 19) * 3 : 0), Math.max(S.v, 9)) * 0.9;
+    const roadYaw = -Math.atan(track.slope(S.d)) * (1 - CURVE_PUSH);
+    const yaw = roadYaw - Math.atan2(S.vx + (S.erratic > 0 ? Math.sin(S.time * 19) * 3 : 0), Math.max(S.v, 9)) * 0.9;
     car.rotation.y += (yaw + (S.oil > 0 ? Math.sin(S.time * 14) * 0.5 : 0) - car.rotation.y) * Math.min(1, dt * 14);
   }
   car.visible = !(S.invuln > 0 && Math.floor(S.time * 10) % 2 === 0) || mode !== 'play';
@@ -750,8 +760,9 @@ function present(dt) {
     if (p.life <= 0) p.m.visible = false;
   }
 
-  // camera — a tilted top-down view that keeps the original's long look ahead
-  S.camX += (S.x - S.camX) * Math.min(1, dt * 5);
+  // camera — a tilted top-down view that keeps the original's long look ahead.
+  // It follows the road, not the car, so steering visibly moves the car across the screen.
+  S.camX += (camTarget() - S.camX) * Math.min(1, dt * 4);
   S.shake = Math.max(0, S.shake - dt * 2.2);
   const sh = S.shake * 0.6;
   camera.position.set(S.camX + rand(-sh, sh), 31 + rand(-sh, sh), z + 30);
